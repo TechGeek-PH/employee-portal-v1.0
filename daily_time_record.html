@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -70,6 +70,26 @@
     .card small{margin-top:8px;color:#7d8b9d;font-size:.74rem;}
     .layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr);gap:18px;align-items:start;}
     .layout.full{grid-template-columns:1fr;}
+    .time-actions-panel{order:1;}
+    .records-panel{order:2;}
+    .attendance-action-form{
+      display:grid;
+      grid-template-columns:minmax(240px,.85fr) minmax(180px,1fr) minmax(180px,1fr) minmax(120px,auto);
+      gap:14px;
+      align-items:end;
+      overflow:hidden;
+    }
+    .attendance-action-form > *{min-width:0;}
+    .attendance-action-form .live-box{align-self:stretch;}
+    .attendance-action-form #gpsBtn{width:100%;min-width:0;}
+    .attendance-action-form .action-grid{
+      grid-column:1/-1;
+      grid-template-columns:repeat(2,minmax(160px,1fr));
+      width:100%;
+      min-width:0;
+    }
+    .attendance-action-form .action-btn{width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+    .today-snapshot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px;}
     .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px;border-bottom:1px solid var(--line);}
     .panel-head h2{margin:0;font-size:1.05rem;}
     .panel-head p{margin:4px 0 0;color:var(--muted);font-size:.82rem;line-height:1.4;}
@@ -120,6 +140,10 @@
       .app{grid-template-columns:240px minmax(0,1fr);}
       .layout{grid-template-columns:1fr;}
       .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .attendance-action-form{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .attendance-action-form .live-box{grid-column:1/-1;}
+      .attendance-action-form #gpsBtn{grid-column:1/-1;}
+      .attendance-action-form .action-grid{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr));}
     }
     @media (max-width:860px){
       .app{display:block;}
@@ -135,6 +159,11 @@
       .content{padding:14px;}
       .form-grid{grid-template-columns:1fr;}
       .field.full{grid-column:auto;}
+      .attendance-action-form{grid-template-columns:1fr;}
+      .attendance-action-form .live-box{grid-row:auto;grid-column:auto;}
+      .attendance-action-form #gpsBtn{grid-column:auto;}
+      .attendance-action-form .action-grid{grid-column:auto;grid-template-columns:1fr;}
+      .today-snapshot-grid{grid-template-columns:1fr;}
     }
     @media (max-width:680px){
       body{background:#f2f5f9;}
@@ -485,65 +514,17 @@
           <article class="card"><span>Time Out</span><strong id="metricTimeOut">--</strong><small>Today's time out</small></article>
         </div>
 
-        <div class="layout">
-          <section class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>My Time Records</h2>
-                <p>Filtered to your logged-in employee record.</p>
-              </div>
-              <button class="ghost-btn" type="button" id="refreshBtn">Refresh</button>
-            </div>
-
-            <div class="toolbar pro-toolbar">
-              <div class="toolbar-group toolbar-left">
-                <input class="search" id="searchInput" placeholder="Search date, status, remarks">
-                <select class="filter" id="statusFilter">
-                  <option value="">All status</option>
-                  <option>Time In</option>
-                  <option>On Break</option>
-                  <option>Returned</option>
-                  <option>Timed Out</option>
-                  <option>Absent</option>
-                </select>
-                <input class="date-filter" id="dateFilter" type="date">
-              </div>
-              <div class="toolbar-right">
-                <button class="ghost-btn" type="button" id="clearFilterBtn">Clear Filter</button>
-              </div>
-            </div>
-
-            <div class="table-wrap">
-              <table class="records-table">
-                <thead>
-                  <tr>
-                    <th>Attendance ID</th>
-                    <th>Date</th>
-                    <th>Employee</th>
-                    <th>Time In</th>
-                    <th>Break Out</th>
-                    <th>Break In</th>
-                    <th>Time Out</th>
-                    <th>Status</th>
-                    <th>Location</th>
-                    <th>Remarks</th>
-                  </tr>
-                </thead>
-                <tbody id="recordRows"><tr><td colspan="10">Loading attendance records...</td></tr></tbody>
-              </table>
-            </div>
-          </section>
-
-          <aside class="panel">
+        <div class="layout full">
+<section class="panel time-actions-panel">
             <div class="panel-head">
               <div>
                 <h2>Time Actions</h2>
-                <p>Recommended flow: Time In -> Break Out -> Break In -> Time Out.</p>
+                <p>Recommended flow: Time In -> Time Out.</p>
               </div>
               <span class="mode-chip" id="todayBadge">Today</span>
             </div>
 
-            <form class="compact-form" id="attendanceForm">
+            <form class="compact-form attendance-action-form" id="attendanceForm">
               <div class="live-box">
                 <div>
                   <span class="live-time" id="liveTime">--:--</span>
@@ -564,8 +545,6 @@
 
               <div class="action-grid">
                 <button class="primary-btn action-btn" type="button" data-att-action="attendanceTimeIn">Time In<small>Start shift</small></button>
-                <button class="ghost-btn action-btn" type="button" data-att-action="attendanceBreakOut">Break Out<small>Start break</small></button>
-                <button class="ghost-btn action-btn" type="button" data-att-action="attendanceBreakIn">Break In<small>Return</small></button>
                 <button class="danger-btn action-btn" type="button" data-att-action="attendanceTimeOut">Time Out<small>End shift</small></button>
               </div>
             </form>
@@ -576,17 +555,60 @@
                 <p>Quick attendance snapshot</p>
               </div>
             </div>
-            <div class="compact-form">
+            <div class="compact-form today-snapshot-grid">
               <div class="detail"><span>Status</span><strong id="sideStatus">--</strong></div>
               <div class="detail"><span>Time In</span><strong id="sideTimeIn">--</strong></div>
               <div class="detail"><span>Time Out</span><strong id="sideTimeOut">--</strong></div>
             </div>
 
             <div class="info-box">
-              <span><b>Workflow:</b> Time In -> Break Out -> Break In -> Time Out.</span>
+              <span><b>Workflow:</b> Time In -> Time Out.</span>
               <span><b>Reminder:</b> Use GPS when you are on-site or in the office.</span>
             </div>
-          </aside>
+          </section>
+
+<section class="panel records-panel">
+            <div class="panel-head">
+              <div>
+                <h2>My Time Records</h2>
+                <p>Filtered to your logged-in employee record.</p>
+              </div>
+              <button class="ghost-btn" type="button" id="refreshBtn">Refresh</button>
+            </div>
+
+            <div class="toolbar pro-toolbar">
+              <div class="toolbar-group toolbar-left">
+                <input class="search" id="searchInput" placeholder="Search date, status, remarks">
+                <select class="filter" id="statusFilter">
+                  <option value="">All status</option>
+                  <option>Time In</option>
+                  <option>Timed Out</option>
+                </select>
+                <input class="date-filter" id="dateFilter" type="date">
+              </div>
+              <div class="toolbar-right">
+                <button class="ghost-btn" type="button" id="clearFilterBtn">Clear Filter</button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="records-table">
+                <thead>
+                  <tr>
+                    <th>Attendance ID</th>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Status</th>
+                    <th>Location</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="recordRows"><tr><td colspan="8">Loading attendance records...</td></tr></tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </div>
     </section>
@@ -619,6 +641,32 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
       return session.user || {};
     }
 
+    function isSessionError(message) {
+      const text = String(message || "").toLowerCase();
+      return text.includes("session expired") ||
+        text.includes("no session token") ||
+        text.includes("please login again") ||
+        text.includes("please log in again") ||
+        text.includes("access denied") ||
+        text.includes("invalid token");
+    }
+
+    function redirectToLogin(message) {
+      try { localStorage.removeItem(SESSION_KEY); } catch (error) {}
+      try { localStorage.removeItem(LEGACY_SESSION_KEY); } catch (error) {}
+
+      const notice = document.querySelector("#notice");
+      if (notice) {
+        notice.textContent = message || "Session expired. Redirecting to login page...";
+        notice.classList.remove("is-hidden", "ok");
+        notice.classList.add("error");
+      }
+
+      setTimeout(function() {
+        window.location.replace("index.html");
+      }, 650);
+    }
+
     function initialsFrom(value) {
       return String(value || "TG")
         .replace(/@.*/, "")
@@ -647,23 +695,67 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     }
 
     function todayLocal() {
-      const d = new Date();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return d.getFullYear() + "-" + m + "-" + day;
+      return localDateKey(new Date());
+    }
+
+    function manilaDateParts(dateObj) {
+      const parts = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(dateObj);
+
+      const mapped = {};
+      parts.forEach(part => {
+        if (part.type !== "literal") mapped[part.type] = part.value;
+      });
+
+      return {
+        year: mapped.year || "",
+        month: mapped.month || "",
+        day: mapped.day || ""
+      };
+    }
+
+    function localDateKey(dateObj) {
+      const parts = manilaDateParts(dateObj);
+      if (!parts.year || !parts.month || !parts.day) return "";
+      return parts.year + "-" + parts.month + "-" + parts.day;
     }
 
     function dateOnly(value) {
-      const raw = String(value || "");
+      const raw = String(value || "").trim();
       if (!raw) return "";
-      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.substring(0, 10);
-      const d = new Date(raw);
-      if (!isNaN(d.getTime())) {
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return d.getFullYear() + "-" + m + "-" + day;
+
+      /*
+        Google Sheets / Apps Script may return Philippine dates as UTC ISO values.
+        Example: 2026-07-02T16:00:00.000Z is already 2026-07-03 in the Philippines.
+        This converts all date-time values using Asia/Manila before matching/displaying.
+      */
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+      if (/^\d{4}-\d{2}-\d{2}[T\s]/.test(raw) || /Z$|[+-]\d{2}:?\d{2}$/.test(raw)) {
+        const parsedDateTime = new Date(raw);
+        if (!isNaN(parsedDateTime.getTime())) return localDateKey(parsedDateTime);
       }
+
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return localDateKey(parsed);
+
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.substring(0, 10);
       return raw.substring(0, 10);
+    }
+
+    function formatDateDisplay(value) {
+      const dateKey = dateOnly(value);
+      if (!dateKey) return "--";
+
+      const parts = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!parts) return dateKey;
+
+      // Philippine display format: MM/DD/YYYY
+      return parts[2] + "/" + parts[3] + "/" + parts[1];
     }
 
     function to12HourTime(hours, minutes, seconds, includeSeconds) {
@@ -678,13 +770,41 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     }
 
     function formatTimeDisplay(value) {
-      const raw = String(value || "").trim();
+      if (value === undefined || value === null || value === "") return "--";
+      const raw = String(value).trim();
       if (!raw) return "--";
 
+      // Already formatted 12-hour time from the backend.
       if (/\b(am|pm)\b/i.test(raw)) {
         return raw.replace(/\s+/g, " ").toUpperCase();
       }
 
+      // Google Sheets can return a time as a fraction of one day.
+      if (/^\d*\.?\d+$/.test(raw)) {
+        const serial = Number(raw);
+        if (Number.isFinite(serial) && serial >= 0 && serial < 1) {
+          const totalMinutes = Math.round(serial * 24 * 60) % (24 * 60);
+          return to12HourTime(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, false);
+        }
+      }
+
+      // Apps Script usually serializes Sheet time cells as UTC ISO strings.
+      // Convert these values to Philippine Standard Time before displaying them.
+      const hasDatePart = /^\d{4}-\d{2}-\d{2}[T\s]/.test(raw);
+      const hasTimeZone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw);
+      if (hasDatePart && hasTimeZone) {
+        const parsedIso = new Date(raw);
+        if (!isNaN(parsedIso.getTime())) {
+          return new Intl.DateTimeFormat("en-PH", {
+            timeZone: "Asia/Manila",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true
+          }).format(parsedIso);
+        }
+      }
+
+      // Plain HH:mm or local date-time without a timezone must not be shifted.
       const timeMatch = raw.match(/(?:T|\s|^)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
       if (timeMatch) {
         return to12HourTime(timeMatch[1], timeMatch[2], timeMatch[3], false);
@@ -692,11 +812,12 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
 
       const parsed = new Date(raw);
       if (!isNaN(parsed.getTime())) {
-        return parsed.toLocaleTimeString("en-PH", {
+        return new Intl.DateTimeFormat("en-PH", {
+          timeZone: "Asia/Manila",
           hour: "numeric",
           minute: "2-digit",
           hour12: true
-        });
+        }).format(parsed);
       }
 
       return raw;
@@ -726,8 +847,18 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     }
 
     async function callBackend(action, payload) {
-      const data = Object.assign({}, payload || {}, { action, method: action });
-      if (!data.token && !data.sessionToken) data.token = getSessionToken();
+      const token = getSessionToken();
+      if (!token) {
+        redirectToLogin("Session expired. Please login again.");
+        throw new Error("Session expired. Please login again.");
+      }
+
+      const data = Object.assign({}, payload || {}, {
+        action,
+        method: action,
+        token,
+        sessionToken: token
+      });
 
       const params = new URLSearchParams();
       Object.keys(data).forEach(k => {
@@ -743,7 +874,18 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
 
       const text = await response.text();
 
-      if (/^[\s\r\n]*[\[{]/.test(text)) return JSON.parse(text);
+      if (/^[\s\r\n]*[\[{]/.test(text)) {
+        const json = JSON.parse(text);
+        const message = (json && json.message) || "";
+        if ((!json || json.success === false || json.ok === false) && isSessionError(message)) {
+          redirectToLogin("Session expired. Please login again.");
+        }
+        return json;
+      }
+
+      if (isSessionError(text)) {
+        redirectToLogin("Session expired. Please login again.");
+      }
 
       if (/<html[\s>]/i.test(text) || /sandboxFrame/i.test(text)) {
         return {
@@ -774,14 +916,26 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
       const dateEl = document.querySelector("#liveDate");
       if (!timeEl || !dateEl) return;
       const now = new Date();
-      timeEl.textContent = now.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
-      dateEl.textContent = now.toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      timeEl.textContent = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      }).format(now);
+      dateEl.textContent = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }).format(now);
     }
 
     function logout() {
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(LEGACY_SESSION_KEY);
-      window.location.href = "index.html";
+      window.location.replace("index.html");
     }
 
     function getEmployeeName(row) {
@@ -793,7 +947,13 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     }
 
     function getStatus(row) {
-      return key(row, ["Status", "status"]) || "Time In";
+      return key(row, ["Status", "status"]);
+    }
+
+    function getDisplayStatus(row) {
+      if (key(row, ["Time Out", "timeOut", "timeout"])) return "Timed Out";
+      if (key(row, ["Time In", "timeIn", "timein"])) return "Time In";
+      return getStatus(row) || "No log";
     }
 
     function getDate(row) {
@@ -802,7 +962,14 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
 
     function getTodayRow(records, currentUserOnly) {
       const today = todayLocal();
-      return records.find(row => dateOnly(getDate(row)) === today && (!currentUserOnly || isCurrentUserRecord(row))) || {};
+      const matches = records.filter(row => dateOnly(getDate(row)) === today && (!currentUserOnly || isCurrentUserRecord(row)));
+      if (!matches.length) return {};
+
+      /* Prefer the completed record; otherwise use the latest Time In record. */
+      const reversed = matches.slice().reverse();
+      return reversed.find(row => key(row, ["Time Out", "timeOut", "timeout"])) ||
+        reversed.find(row => key(row, ["Time In", "timeIn", "timein"])) ||
+        reversed[0] || {};
     }
 
     function isCurrentUserRecord(row) {
@@ -877,7 +1044,7 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
       const status = normalize(fields.statusFilter.value);
       const selectedDate = fields.dateFilter.value;
       return ownRecords().filter(row => {
-        const rowStatus = normalize(getStatus(row));
+        const rowStatus = normalize(getDisplayStatus(row));
         const rowDate = dateOnly(getDate(row));
         const text = Object.keys(row).map(k => row[k]).join(" ").toLowerCase();
         return (!status || rowStatus === status) &&
@@ -889,7 +1056,7 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     function renderStats() {
       const records = ownRecords();
       const todayRow = getTodayRow(records, false);
-      const status = getStatus(todayRow) || "No log";
+      const status = getDisplayStatus(todayRow);
       const timeIn = key(todayRow, ["Time In", "timeIn", "timein"]);
       const timeOut = key(todayRow, ["Time Out", "timeOut", "timeout"]);
 
@@ -912,23 +1079,21 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
       renderStats();
 
       if (!rows.length) {
-        fields.recordRows.innerHTML = '<tr><td colspan="10"><div class="empty-state">No time record found for the selected filter.</div></td></tr>';
+        fields.recordRows.innerHTML = '<tr><td colspan="8"><div class="empty-state">No time record found for the selected filter.</div></td></tr>';
         return;
       }
 
       fields.recordRows.innerHTML = rows.slice().reverse().map(row => {
         const location = key(row, ["Location Link", "locationLink"]);
-        const status = getStatus(row);
+        const status = getDisplayStatus(row);
         const employeeName = getEmployeeName(row);
         const employeeId = getEmployeeId(row);
 
         return "<tr>" +
           '<td data-label="Attendance ID">' + escapeHtml(key(row, ["AttendanceID", "attendanceId"])) + "</td>" +
-          '<td data-label="Date">' + escapeHtml(getDate(row)) + "</td>" +
+          '<td data-label="Date">' + escapeHtml(formatDateDisplay(getDate(row))) + "</td>" +
           '<td data-label="Employee" class="employee-cell"><strong>' + escapeHtml(employeeName) + '</strong><span>' + escapeHtml(employeeId) + '</span></td>' +
           '<td data-label="Time In">' + escapeHtml(formatTimeDisplay(key(row, ["Time In", "timeIn", "timein"]))) + "</td>" +
-          '<td data-label="Break Out">' + escapeHtml(formatTimeDisplay(key(row, ["Break Out", "breakOut", "breakout"]))) + "</td>" +
-          '<td data-label="Break In">' + escapeHtml(formatTimeDisplay(key(row, ["Break In", "breakIn", "breakin"]))) + "</td>" +
           '<td data-label="Time Out">' + escapeHtml(formatTimeDisplay(key(row, ["Time Out", "timeOut", "timeout"]))) + "</td>" +
           '<td data-label="Status"><span class="status-chip ' + statusClass(status) + '">' + escapeHtml(status) + "</span></td>" +
           '<td data-label="Location">' + (location ? '<a class="small-btn" href="' + escapeHtml(location) + '" target="_blank" rel="noopener">Open</a>' : "--") + "</td>" +
@@ -997,10 +1162,14 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxDY5TsonrB58YaN8LG
     fields.gpsBtn.addEventListener("click", () => useCurrentLocation(fields.locationLink));
     fields.logoutBtn.addEventListener("click", logout);
 
-    setUser(fields, fields.adminRecordsLink);
-    updateLiveClock();
-    setInterval(updateLiveClock, 1000);
-    loadAttendance();
+    if (!getSessionToken()) {
+      redirectToLogin("Session expired. Please login again.");
+    } else {
+      setUser(fields, fields.adminRecordsLink);
+      updateLiveClock();
+      setInterval(updateLiveClock, 1000);
+      loadAttendance();
+    }
   </script>
 
   <script>
