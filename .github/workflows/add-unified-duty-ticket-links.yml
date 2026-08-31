@@ -1,0 +1,42 @@
+name: Add Unified Duty Ticket Links
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-unified-duty-ticket-links.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch employee dashboard links
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('dashboard.html')
+          s=p.read_text(encoding='utf-8-sig')
+          old='''          <a href="tickets.html">Tickets</a>\n          <a href="nap-checker.html">NAP Checker</a>'''
+          new='''          <a href="tickets.html">Tickets Admin / Legacy</a>\n          <a href="https://techgeek-ph.github.io/admin-portal/app.html">Technician Tickets App</a>\n          <a href="nap-checker.html">NAP Checker</a>'''
+          if old in s:s=s.replace(old,new)
+          old='''          <a href="daily_time_record.html">My Time Record</a>\n          <a href="my_expense_request.html">My Expense Request</a>'''
+          new='''          <a href="daily_time_record.html">My Time Record</a>\n          <a href="on_duty_monitoring.html">On Duty Monitoring</a>\n          <a href="my_expense_request.html">My Expense Request</a>'''
+          if old in s:s=s.replace(old,new)
+          old='''              <button class="action" type="button" data-page="tickets.html"><span class="action-icon">T</span><span><b>Tickets</b><span>Service requests and repairs</span></span></button>'''
+          new='''              <button class="action" type="button" data-page="https://techgeek-ph.github.io/admin-portal/app.html"><span class="action-icon">T</span><span><b>Technician Tickets App</b><span>Get tickets, select co-technicians and update work</span></span></button>'''
+          if old in s:s=s.replace(old,new)
+          old='''              <button class="action" type="button" data-page="daily_time_record.html"><span class="action-icon">D</span><span><b>My Time Record</b><span>Employee daily time record</span></span></button>'''
+          new='''              <button class="action" type="button" data-page="daily_time_record.html"><span class="action-icon">D</span><span><b>My Time Record</b><span>Employee daily time record</span></span></button>\n              <button class="action" type="button" data-page="on_duty_monitoring.html"><span class="action-icon">O</span><span><b>On Duty Monitoring</b><span>Time In, ticket timeline, accomplishments and Time Out</span></span></button>'''
+          if old in s:s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name "TechGeekPH Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add dashboard.html
+          git diff --cached --quiet || git commit -m "Link employee web to unified duty and ticket workflow"
+          git push
