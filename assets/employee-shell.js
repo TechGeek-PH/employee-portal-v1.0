@@ -27,6 +27,17 @@
 
   if (operationsGroup) {
     const panel = operationsGroup.querySelector('.nav-panel');
+
+    if (panel && !panel.querySelector('a[href="collections.html"]')) {
+      const collectionLink = document.createElement('a');
+      collectionLink.href = 'collections.html';
+      collectionLink.textContent = 'Collections';
+      collectionLink.title = 'Collection list, field status updates, notes and monitoring log';
+      const nap = panel.querySelector('a[href="nap-checker.html"]');
+      if (nap) panel.insertBefore(collectionLink, nap);
+      else panel.appendChild(collectionLink);
+    }
+
     if (panel && !panel.querySelector('[data-unified-tech-tickets]')) {
       const link = document.createElement('a');
       link.href = 'https://techgeek-ph.github.io/admin-portal/app.html';
@@ -37,6 +48,20 @@
       if (legacy && legacy.nextSibling) panel.insertBefore(link, legacy.nextSibling);
       else panel.appendChild(link);
     }
+  }
+
+  const quickActions = document.querySelector('.quick-actions');
+  if (quickActions && !quickActions.querySelector('[data-page="collections.html"]')) {
+    const button = document.createElement('button');
+    button.className = 'action';
+    button.type = 'button';
+    button.setAttribute('data-page', 'collections.html');
+    button.innerHTML = '<span class="action-icon">$</span><span><b>Collections</b><span>View collection list and update field status</span></span>';
+    button.addEventListener('click', function() { window.location.href = 'collections.html'; });
+
+    const napButton = quickActions.querySelector('[data-page="nap-checker.html"]');
+    if (napButton) quickActions.insertBefore(button, napButton);
+    else quickActions.appendChild(button);
   }
 
   const page = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
