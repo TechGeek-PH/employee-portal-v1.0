@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collections | TechGeekPH Employee</title>
+  <link rel="stylesheet" href="assets/employee-shell.css">
+  <style>
+    :root {
+      --blue:#064f83; --blue-strong:#023d6b; --ink:#16202f; --muted:#64748b;
+      --line:#d9e1ec; --soft:#f5f7fb; --surface:#fff; --ok:#178357;
+      --warn:#b7791f; --danger:#b42318; --purple:#6b4eff;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box} body{margin:0;background:var(--soft);color:var(--ink)}
+    button,input,select,textarea{font:inherit} button{cursor:pointer}
+    .app{min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr)}
+    .sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:22px;padding:22px;color:#fff;background:linear-gradient(180deg,var(--blue-strong),var(--blue) 58%,#083453);overflow:auto}
+    .brand{display:grid;gap:14px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.16)}
+    .brand-logo{display:grid;place-items:center;width:150px;min-height:54px;padding:8px 10px;border-radius:8px;background:#fff}
+    .brand-logo img{width:100%;height:auto;display:block}.brand strong,.brand span{display:block}.brand strong{font-size:.96rem;font-weight:900}.brand span{margin-top:4px;color:rgba(255,255,255,.78);font-size:.78rem;line-height:1.38}
+    .nav{display:grid;grid-template-columns:1fr;gap:8px;width:100%}.nav a,.nav-toggle{display:flex;align-items:center;justify-content:flex-start;width:100%;min-height:42px;border:0;border-radius:8px;color:rgba(255,255,255,.92);background:transparent;padding:0 12px;text-align:left;text-decoration:none;font-size:.88rem;font-weight:850;cursor:pointer}
+    .nav a:hover,.nav a.is-active,.nav-toggle:hover,.nav-toggle.is-active{color:#fff;background:rgba(255,255,255,.13)}
+    .nav-group{display:grid;gap:6px;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:6px;background:rgba(255,255,255,.06)}
+    .nav-toggle{min-height:38px;background:rgba(255,255,255,.08)}.nav-toggle::after{content:">";margin-left:auto;opacity:.75}.nav-group.is-open .nav-toggle::after{transform:rotate(90deg)}
+    .nav-panel{display:none;gap:4px;padding:2px 0 0 10px;margin-left:6px;border-left:1px solid rgba(255,255,255,.22)}.nav-group.is-open .nav-panel{display:grid}.nav-panel a{min-height:34px;padding:0 10px;font-size:.8rem;white-space:normal}
+    .sidebar-footer{margin-top:auto}.logout{width:100%;min-height:40px;border:1px solid rgba(255,255,255,.28);border-radius:8px;color:#fff;background:transparent;font-weight:850;text-align:left;padding:0 12px}
+    .main{min-width:0}.topbar{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:78px;padding:16px clamp(18px,4vw,38px);border-bottom:1px solid var(--line);background:rgba(255,255,255,.94);backdrop-filter:blur(14px)}
+    .title-block h1{margin:0;font-size:clamp(1.35rem,2.2vw,2rem)}.title-block p{margin:5px 0 0;color:var(--muted);font-size:.9rem}.user-chip{display:flex;align-items:center;gap:10px}.avatar{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#c91448,var(--blue));color:#fff;font-weight:900}.user-chip strong,.user-chip span{display:block}.user-chip span{margin-top:2px;color:var(--muted);font-size:.8rem}
+    .content{padding:clamp(18px,4vw,38px);display:grid;gap:18px}.notice{display:none;padding:12px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:.86rem;line-height:1.45}.notice.show{display:block}.notice.ok{border-color:#b8e0cf;background:#effaf5;color:#12623f}.notice.err{border-color:#f0b8b3;background:#fff3f2;color:#8f1d16}
+    .toolbar,.panel,.stat{border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:0 8px 24px rgba(14,34,55,.05)}
+    .toolbar{display:grid;grid-template-columns:minmax(180px,1fr) 190px 180px auto;gap:10px;padding:14px}.field{display:grid;gap:5px}.field label{color:var(--muted);font-size:.72rem;font-weight:850;text-transform:uppercase;letter-spacing:.04em}.field input,.field select,.field textarea{width:100%;min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 11px;color:var(--ink)}.field textarea{min-height:100px;padding:10px;resize:vertical}.btn{min-height:42px;border:0;border-radius:8px;padding:0 14px;font-weight:850}.btn.primary{background:var(--blue);color:#fff}.btn.ghost{border:1px solid var(--line);background:#fff;color:var(--blue)}.btn.danger{background:var(--danger);color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}
+    .summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.stat{padding:15px}.stat span{display:block;color:var(--muted);font-size:.76rem;font-weight:800}.stat strong{display:block;margin-top:9px;font-size:1.65rem;color:var(--blue)}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 16px;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:1rem}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:.8rem}.meta{color:var(--muted);font-size:.78rem}
+    .table-wrap{overflow:auto}.collection-table{width:100%;border-collapse:collapse;min-width:1180px;font-size:.82rem}.collection-table th,.collection-table td{padding:11px 12px;border-bottom:1px solid #edf1f6;text-align:left;vertical-align:top}.collection-table th{position:sticky;top:0;background:#f9fbfd;color:#475569;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;z-index:1}.client{font-weight:850}.sub{display:block;margin-top:3px;color:var(--muted);font-size:.74rem;line-height:1.35;white-space:normal;max-width:290px}.money{font-weight:850}.status{display:inline-flex;align-items:center;min-height:25px;padding:0 8px;border-radius:999px;font-size:.72rem;font-weight:900;white-space:nowrap}.s-paid{background:#eaf8f1;color:#117044}.s-pullout{background:#fff5dc;color:#8a5a00}.s-done{background:#eaf3ff;color:#175ca8}.s-unable{background:#fff0dc;color:#a34f00}.s-disc{background:#ffe9e7;color:#9d2018}.s-expired,.s-exempted{background:#eef1f5;color:#596575}.s-default{background:#f2f4f7;color:#475467}.update-btn{min-height:34px;border:1px solid #bdd0df;border-radius:7px;background:#f7fbff;color:var(--blue);font-weight:850;padding:0 10px}.empty{padding:32px;text-align:center;color:var(--muted)}
+    .cards{display:none;gap:10px;padding:12px}.collection-card{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fff;display:grid;gap:10px}.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.kv{display:grid;grid-template-columns:105px 1fr;gap:6px 9px;font-size:.8rem}.kv b{color:var(--muted);font-size:.72rem}.kv span{min-width:0;overflow-wrap:anywhere}.card-actions{display:flex;justify-content:flex-end}
+    .modal-backdrop{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:18px;background:rgba(16,24,40,.55)}.modal-backdrop.show{display:grid}.modal{width:min(520px,100%);max-height:90vh;overflow:auto;border-radius:12px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.25)}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:17px;border-bottom:1px solid var(--line)}.modal-head h3{margin:0}.modal-head p{margin:5px 0 0;color:var(--muted);font-size:.8rem}.close{width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:1.1rem}.modal-body{display:grid;gap:13px;padding:17px}.readonly{padding:10px 11px;border:1px solid #e5e9ef;border-radius:8px;background:#f8fafc;font-size:.84rem}.readonly strong,.readonly span{display:block}.readonly span{margin-top:3px;color:var(--muted);font-size:.76rem}.modal-actions{display:flex;justify-content:flex-end;gap:9px;padding:0 17px 17px}.required-note{display:none;color:#9a3412;font-size:.75rem}.required-note.show{display:block}.spinner{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:1080px){.toolbar{grid-template-columns:1fr 1fr}.summary{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.toolbar{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.table-wrap{display:none}.cards{display:grid}.topbar{align-items:flex-start;flex-direction:column}}
+    @media(max-width:520px){.summary{grid-template-columns:1fr 1fr}.content{padding:14px}.kv{grid-template-columns:90px 1fr}.user-chip{width:100%}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <aside class="sidebar" data-employee-sidebar>
+    <div class="brand">
+      <div class="brand-logo"><img src="assets/TechGeekPH%20-%20logo.png" alt="TechGeekPH"></div>
+      <div><strong>TechGeekPH Employee</strong><span>Employee portal workspace for field work, attendance, expenses, stock, and collection updates.</span></div>
+    </div>
+    <nav class="nav" aria-label="Employee navigation">
+      <a href="dashboard.html">Dashboard</a>
+      <div class="nav-group">
+        <button class="nav-toggle" type="button">Operations</button>
+        <div class="nav-panel">
+          <a href="application_form.html">Application Form</a>
+          <a href="clients.html">Clients</a>
+          <a href="tickets.html">Tickets Admin / Legacy</a>
+          <a href="https://techgeek-ph.github.io/admin-portal/app.html">Technician Tickets App</a>
+          <a href="collections.html">Collections</a>
+          <a href="nap-checker.html">NAP Checker</a>
+        </div>
+      </div>
+      <div class="nav-group">
+        <button class="nav-toggle" type="button">Attendance &amp; Expenses</button>
+        <div class="nav-panel">
+          <a href="daily_time_record.html">My Time Record</a>
+          <a href="on_duty_monitoring.html">On Duty Monitoring</a>
+          <a href="my_expense_request.html">My Expense Request</a>
+          <a href="payslip_generator.html">Payslip Generator</a>
+        </div>
+      </div>
+      <div class="nav-group">
+        <button class="nav-toggle" type="button">Stock</button>
+        <div class="nav-panel"><a href="consumable_stock.html">Consumable Stock</a></div>
+      </div>
+    </nav>
+    <div class="sidebar-footer"><button class="logout" id="logoutBtn" type="button">Log out</button></div>
+  </aside>
+
+  <section class="main">
+    <header class="topbar">
+      <div class="title-block"><h1>Collections</h1><p>Google Sheet collection list, field updates, notes, and employee monitoring.</p></div>
+      <div class="user-chip"><div class="avatar" id="avatar">TG</div><div><strong id="userName">TechGeekPH Employee</strong><span id="userRole">Employee access</span></div></div>
+    </header>
+
+    <div class="content">
+      <div class="notice" id="notice"></div>
+
+      <section class="toolbar">
+        <div class="field"><label for="searchInput">Search</label><input id="searchInput" type="search" placeholder="Account, client, phone, address..."></div>
+        <div class="field"><label for="monthSelect">Month / Year</label><select id="monthSelect"><option>Loading months...</option></select></div>
+        <div class="field"><label for="statusFilter">Collection Status</label><select id="statusFilter"><option value="">All statuses</option></select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" id="refreshBtn" type="button">Refresh</button></div>
+      </section>
+
+      <section class="summary">
+        <article class="stat"><span>Total Records</span><strong id="countTotal">0</strong></article>
+        <article class="stat"><span>For Pullout</span><strong id="countPullout">0</strong></article>
+        <article class="stat"><span>Paid</span><strong id="countPaid">0</strong></article>
+        <article class="stat"><span>Done Pullout</span><strong id="countDone">0</strong></article>
+        <article class="stat"><span>Unable / Disconnected</span><strong id="countIssue">0</strong></article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2 id="listTitle">Collection List</h2><p>Billing Status is read-only here. Employee updates affect Collection Status, Tech Name, Note, and Date Update only.</p></div>
+          <span class="meta" id="lastRefresh">Not loaded</span>
+        </div>
+        <div class="table-wrap">
+          <table class="collection-table">
+            <thead><tr><th>Account</th><th>Client</th><th>Amount / Due</th><th>Collection Status</th><th>Billing Status</th><th>Assigned / Updated</th><th>Address / Note</th><th>Action</th></tr></thead>
+            <tbody id="rowsBody"><tr><td colspan="8" class="empty">Loading collection data...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="cards" id="cards"></div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head"><div><h3 id="modalTitle">Update Collection</h3><p id="modalSub"></p></div><button class="close" id="closeModal" type="button" aria-label="Close">×</button></div>
+    <div class="modal-body">
+      <div class="readonly"><strong id="modalClient">—</strong><span id="modalDetails">—</span></div>
+      <div class="field"><label for="updateStatus">Collection Status</label><select id="updateStatus"></select></div>
+      <div class="field"><label for="updateNote">Comment / Note</label><textarea id="updateNote" placeholder="Add field note or collection update..."></textarea><div class="required-note" id="requiredNote">A note is required for this status.</div></div>
+      <div class="readonly"><strong>Employee</strong><span id="modalEmployee">Automatically taken from your authenticated employee account.</span></div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" id="cancelModal" type="button">Cancel</button><button class="btn primary" id="saveUpdate" type="button">Save Update</button></div>
+  </div>
+</div>
+
+<script>
+  const COLLECTION_API_URL = 'https://script.google.com/macros/s/AKfycbwRLth8fdqRF0fTyu2fg6hwCqjq20gpLWIpwustmS1MHxz9_0_kuReDg8xouy3ZjJiNiQ/exec';
+  const SESSION_KEYS = ['techgeekph_session','techgeekph_employee_session'];
+  const NOTE_REQUIRED = ['Unable to Pullout','Disconnected/Relocation','Disconnected','Exempted'];
+
+  const els = {
+    notice:document.querySelector('#notice'), search:document.querySelector('#searchInput'), month:document.querySelector('#monthSelect'),
+    status:document.querySelector('#statusFilter'), refresh:document.querySelector('#refreshBtn'), body:document.querySelector('#rowsBody'), cards:document.querySelector('#cards'),
+    total:document.querySelector('#countTotal'), pullout:document.querySelector('#countPullout'), paid:document.querySelector('#countPaid'), done:document.querySelector('#countDone'), issue:document.querySelector('#countIssue'),
+    title:document.querySelector('#listTitle'), lastRefresh:document.querySelector('#lastRefresh'), avatar:document.querySelector('#avatar'), userName:document.querySelector('#userName'), userRole:document.querySelector('#userRole'),
+    modal:document.querySelector('#modalBackdrop'), modalSub:document.querySelector('#modalSub'), modalClient:document.querySelector('#modalClient'), modalDetails:document.querySelector('#modalDetails'), modalEmployee:document.querySelector('#modalEmployee'),
+    updateStatus:document.querySelector('#updateStatus'), updateNote:document.querySelector('#updateNote'), requiredNote:document.querySelector('#requiredNote'), save:document.querySelector('#saveUpdate')
+  };
+
+  let state = { rows:[], filtered:[], months:[], statuses:[], sheet:'', periodKey:'', selected:null, accessToken:'', loading:false };
+
+  function parseJson(value){ try{return JSON.parse(value)}catch(_){return null} }
+  function loadPortalSession(){ for(const key of SESSION_KEYS){ const v=parseJson(localStorage.getItem(key)||''); if(v&&typeof v==='object') return v; } return {}; }
+  function findAccessToken(value, depth){
+    depth=depth||0; if(depth>5||value==null) return '';
+    if(typeof value==='string'){
+      if(value.split('.').length===3 && value.length>80) return value;
+      const parsed=parseJson(value); return parsed ? findAccessToken(parsed,depth+1) : '';
+    }
+    if(Array.isArray(value)){ for(const item of value){const hit=findAccessToken(item,depth+1);if(hit)return hit;} return ''; }
+    if(typeof value==='object'){
+      for(const key of ['access_token','accessToken','supabase_access_token','supabaseAccessToken']){ if(value[key]){const hit=findAccessToken(value[key],depth+1);if(hit)return hit;} }
+      for(const key of Object.keys(value)){const hit=findAccessToken(value[key],depth+1);if(hit)return hit;}
+    }
+    return '';
+  }
+  function resolveAccessToken(session){
+    const direct=findAccessToken(session,0); if(direct) return direct;
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i)||'';
+      if(/^sb-.*-auth-token$/i.test(key)){
+        const hit=findAccessToken(localStorage.getItem(key)||'',0); if(hit) return hit;
+      }
+    }
+    return '';
+  }
+  function initials(value){return String(value||'TG').replace(/@.*/,'').split(/[.\s_-]+/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join('')||'TG'}
+  function setUser(){
+    const s=loadPortalSession(), u=s.user||{}; const name=u.name||u.full_name||u.email||s.email||'TechGeekPH Employee'; const role=u.role||s.role||'Employee';
+    els.userName.textContent=name; els.userRole.textContent=String(role).replace(/_/g,' ')+' access'; els.avatar.textContent=initials(name); state.accessToken=resolveAccessToken(s);
+  }
+  function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+  function showNotice(msg,type){els.notice.textContent=msg;els.notice.className='notice show '+(type||'')}
+  function hideNotice(){els.notice.textContent='';els.notice.className='notice'}
+  function statusClass(v){
+    const s=String(v||'').toLowerCase(); if(s==='paid')return's-paid';if(s==='for pullout')return's-pullout';if(s==='done pullout')return's-done';if(s==='unable to pullout')return's-unable';if(s.includes('disconnect'))return's-disc';if(s==='expired')return's-expired';if(s==='exempted')return's-exempted';return's-default';
+  }
+  function badge(v){return '<span class="status '+statusClass(v)+'">'+esc(v||'Not set')+'</span>'}
+
+  async function api(payload){
+    const body=Object.assign({},payload,{access_token:state.accessToken});
+    const res=await fetch(COLLECTION_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(body),redirect:'follow'});
+    const text=await res.text(); let data=null; try{data=JSON.parse(text)}catch(_){throw new Error(/<html/i.test(text)?'Apps Script returned an HTML page. Check the Web App deployment access.':(text||'Invalid API response.'))}
+    if(!data||data.success===false) throw new Error(data&&data.error?data.error:'Collection API request failed.'); return data;
+  }
+
+  function authErrorMessage(err){
+    const m=String(err&&err.message?err.message:err||'');
+    if(/jwt|session|required|active staff|unauthorized/i.test(m)) return 'Collection access needs your authenticated Supabase staff session. Open the Technician Tickets App and sign in with your staff account once, then return here and Refresh. Details: '+m;
+    return m;
+  }
+
+  async function loadMonths(){
+    const data=await api({action:'months'}); state.months=Array.isArray(data.months)?data.months:[];
+    els.month.innerHTML='';
+    if(!state.months.length){els.month.innerHTML='<option value="">No monthly tabs found</option>';return;}
+    state.months.forEach(m=>{const o=document.createElement('option');o.value=m.sheet;o.textContent=m.label||m.sheet;els.month.appendChild(o)});
+  }
+
+  async function loadRows(keepMonth){
+    if(state.loading)return; state.loading=true; els.refresh.disabled=true; els.refresh.innerHTML='<span class="spinner"></span>Loading'; hideNotice();
+    try{
+      if(!state.accessToken) throw new Error('No Supabase employee session found. Open the Technician Tickets App and sign in once, then return to Collections.');
+      if(!state.months.length) await loadMonths();
+      const requested=keepMonth&&els.month.value?els.month.value:'';
+      const data=await api({action:'list',sheet:requested});
+      state.rows=Array.isArray(data.rows)?data.rows:[]; state.statuses=Array.isArray(data.statuses)?data.statuses:[]; state.sheet=data.sheet||requested; state.periodKey=data.period_key||'';
+      if(data.available_sheets&&Array.isArray(data.available_sheets)){state.months=data.available_sheets;renderMonthOptions(state.sheet)} else if(state.sheet){els.month.value=state.sheet}
+      renderStatusOptions(); applyFilters(); els.title.textContent='Collection List — '+(state.months.find(m=>m.sheet===state.sheet)?.label||state.sheet||'Current Month'); els.lastRefresh.textContent='Updated '+new Date().toLocaleTimeString();
+    }catch(err){
+      state.rows=[];applyFilters();showNotice(authErrorMessage(err),'err');
+    }finally{state.loading=false;els.refresh.disabled=false;els.refresh.textContent='Refresh'}
+  }
+
+  function renderMonthOptions(selected){
+    const current=selected||els.month.value;els.month.innerHTML='';state.months.forEach(m=>{const o=document.createElement('option');o.value=m.sheet;o.textContent=m.label||m.sheet;if(m.sheet===current)o.selected=true;els.month.appendChild(o)});
+  }
+  function renderStatusOptions(){
+    const selected=els.status.value;els.status.innerHTML='<option value="">All statuses</option>';state.statuses.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s===selected)o.selected=true;els.status.appendChild(o)});
+  }
+  function applyFilters(){
+    const q=els.search.value.trim().toLowerCase(), sf=els.status.value;
+    state.filtered=state.rows.filter(r=>{
+      if(sf&&r.collection_status!==sf)return false;
+      if(!q)return true;
+      return [r.account,r.client_name,r.phone,r.account_no,r.address,r.tech_name,r.collection_status,r.note].join(' ').toLowerCase().includes(q);
+    });
+    renderSummary();renderRows();
+  }
+  function renderSummary(){
+    const rows=state.filtered;const count=s=>rows.filter(r=>String(r.collection_status||'').toLowerCase()===s.toLowerCase()).length;
+    els.total.textContent=rows.length.toLocaleString();els.pullout.textContent=count('For Pullout').toLocaleString();els.paid.textContent=count('Paid').toLocaleString();els.done.textContent=count('Done Pullout').toLocaleString();
+    els.issue.textContent=rows.filter(r=>/unable|disconnect/i.test(String(r.collection_status||''))).length.toLocaleString();
+  }
+  function renderRows(){
+    const rows=state.filtered;
+    if(!rows.length){els.body.innerHTML='<tr><td colspan="8" class="empty">No collection records match this filter.</td></tr>';els.cards.innerHTML='<div class="empty">No collection records match this filter.</div>';return;}
+    els.body.innerHTML=rows.map(r=>'<tr>'+ 
+      '<td><strong>'+esc(r.account)+'</strong><span class="sub">'+esc(r.account_no||'')+'</span></td>'+ 
+      '<td><span class="client">'+esc(r.client_name)+'</span><span class="sub">'+esc(r.phone||'')+'</span></td>'+ 
+      '<td><span class="money">'+esc(r.total||'')+'</span><span class="sub">Due: '+esc(r.due_date||'—')+'<br>Isolation: '+esc(r.isolation_date||'—')+'</span></td>'+ 
+      '<td>'+badge(r.collection_status)+'</td>'+ 
+      '<td>'+badge(r.billing_status)+'</td>'+ 
+      '<td>'+esc(r.tech_name||'—')+'<span class="sub">'+esc(r.date_update||'No update time')+'</span></td>'+ 
+      '<td>'+esc(r.address||'')+'<span class="sub">Note: '+esc(r.note||'—')+'</span></td>'+ 
+      '<td><button class="update-btn" type="button" data-account="'+esc(r.account)+'">Update</button></td></tr>').join('');
+    els.cards.innerHTML=rows.map(r=>'<article class="collection-card"><div class="card-top"><div><strong>'+esc(r.client_name)+'</strong><span class="sub">'+esc(r.account)+' · '+esc(r.total||'')+'</span></div>'+badge(r.collection_status)+'</div><div class="kv"><b>Due</b><span>'+esc(r.due_date||'—')+'</span><b>Billing</b><span>'+badge(r.billing_status)+'</span><b>Tech</b><span>'+esc(r.tech_name||'—')+'</span><b>Address</b><span>'+esc(r.address||'—')+'</span><b>Note</b><span>'+esc(r.note||'—')+'</span></div><div class="card-actions"><button class="update-btn" type="button" data-account="'+esc(r.account)+'">Update Collection</button></div></article>').join('');
+  }
+
+  function openModal(account){
+    const row=state.rows.find(r=>r.account===account);if(!row)return;state.selected=row;
+    els.modalClient.textContent=row.client_name||row.account;els.modalSub.textContent=row.account+' · '+(row.total||'');els.modalDetails.textContent='Current: '+(row.collection_status||'Not set')+' | Billing: '+(row.billing_status||'—');els.modalEmployee.textContent=els.userName.textContent+' — authenticated employee';
+    els.updateStatus.innerHTML='';state.statuses.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s===row.collection_status)o.selected=true;els.updateStatus.appendChild(o)});els.updateNote.value=row.note||'';syncNoteRequirement();els.modal.classList.add('show');els.updateStatus.focus();
+  }
+  function closeModal(){els.modal.classList.remove('show');state.selected=null;els.updateNote.value=''}
+  function syncNoteRequirement(){const req=NOTE_REQUIRED.includes(els.updateStatus.value);els.requiredNote.classList.toggle('show',req);els.updateNote.required=req}
+  async function saveUpdate(){
+    if(!state.selected)return;const status=els.updateStatus.value,note=els.updateNote.value.trim();if(NOTE_REQUIRED.includes(status)&&!note){els.updateNote.focus();showNotice('A comment/note is required for '+status+'.','err');return;}
+    els.save.disabled=true;els.save.innerHTML='<span class="spinner"></span>Saving';hideNotice();
+    try{
+      const result=await api({action:'update',sheet:state.sheet,account:state.selected.account,status:status,note:note});
+      closeModal();showNotice('Saved: '+result.account+' → '+result.new_status+'. Employee monitoring log was also updated.','ok');await loadRows(true);
+    }catch(err){showNotice(authErrorMessage(err),'err')}
+    finally{els.save.disabled=false;els.save.textContent='Save Update'}
+  }
+
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-account]');if(b)openModal(b.dataset.account)});
+  els.search.addEventListener('input',applyFilters);els.status.addEventListener('change',applyFilters);els.month.addEventListener('change',()=>loadRows(true));els.refresh.addEventListener('click',()=>loadRows(true));els.updateStatus.addEventListener('change',syncNoteRequirement);els.save.addEventListener('click',saveUpdate);
+  document.querySelector('#closeModal').addEventListener('click',closeModal);document.querySelector('#cancelModal').addEventListener('click',closeModal);els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&els.modal.classList.contains('show'))closeModal()});
+  document.querySelector('#logoutBtn').addEventListener('click',()=>{SESSION_KEYS.forEach(k=>localStorage.removeItem(k));window.location.href='index.html'});
+
+  setUser();loadRows(false);setInterval(()=>{if(!els.modal.classList.contains('show')&&!document.hidden)loadRows(true)},30000);
+</script>
+<script src="assets/employee-shell.js"></script>
+</body>
+</html>
