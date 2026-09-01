@@ -1,0 +1,313 @@
+const COLLECTION_CONFIG = Object.freeze({
+  SPREADSHEET_ID: '1zSlXVTy9wKJE90lM8GZKpqZuuNqsT3Z3Dt0CD8nXzKs',
+  TIMEZONE: 'Asia/Manila',
+  TOKEN_PROPERTY: 'COLLECTION_API_TOKEN',
+  STATUS_OPTIONS: [
+    'Paid',
+    'For Pullout',
+    'Done Pullout',
+    'Expired',
+    'Unable to Pullout',
+    'Disconnected/Relocation',
+    'Disconnected',
+    'Exempted'
+  ],
+  NOTE_REQUIRED: [
+    'Unable to Pullout',
+    'Disconnected/Relocation',
+    'Disconnected',
+    'Exempted'
+  ]
+});
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('Collection API')
+    .addItem('Setup API', 'setupCollectionApi')
+    .addItem('Show API Token', 'showCollectionApiToken')
+    .addItem('Test Collection List', 'testCollectionList')
+    .addToUi();
+}
+
+function setupCollectionApi() {
+  const ss = SpreadsheetApp.openById(COLLECTION_CONFIG.SPREADSHEET_ID);
+  ss.setSpreadsheetTimeZone(COLLECTION_CONFIG.TIMEZONE);
+
+  const props = PropertiesService.getScriptProperties();
+  let token = props.getProperty(COLLECTION_CONFIG.TOKEN_PROPERTY);
+  if (!token) {
+    token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    props.setProperty(COLLECTION_CONFIG.TOKEN_PROPERTY, token);
+  }
+
+  console.log('Collection API setup complete.');
+  console.log('Spreadsheet timezone: ' + ss.getSpreadsheetTimeZone());
+  console.log('COLLECTION_API_TOKEN=' + token);
+  return { success: true, timezone: ss.getSpreadsheetTimeZone(), token: token };
+}
+
+function showCollectionApiToken() {
+  const token = getApiToken_();
+  console.log('COLLECTION_API_TOKEN=' + token);
+  return token;
+}
+
+function testCollectionList() {
+  const result = listCollections_({});
+  console.log(JSON.stringify({
+    success: result.success,
+    sheet: result.sheet,
+    total: result.total,
+    sample: result.rows.slice(0, 3)
+  }, null, 2));
+  return result;
+}
+
+function doGet(e) {
+  try {
+    const p = (e && e.parameter) || {};
+    validateToken_(p.token);
+    const action = String(p.action || 'list').toLowerCase();
+
+    if (action === 'health') {
+      return json_({
+        success: true,
+        service: 'TechGeekPH Collection API',
+        timezone: COLLECTION_CONFIG.TIMEZONE,
+        spreadsheet_id: COLLECTION_CONFIG.SPREADSHEET_ID
+      });
+    }
+
+    if (action === 'list') {
+      return json_(listCollections_({
+        sheet: p.sheet || p.month || '',
+        status: p.status || '',
+        search: p.search || ''
+      }));
+    }
+
+    throw new Error('Unsupported action: ' + action);
+  } catch (err) {
+    return json_({ success: false, error: String(err && err.message ? err.message : err) });
+  }
+}
+
+function doPost(e) {
+  try {
+    const body = parseJsonBody_(e);
+    validateToken_(body.token);
+    const action = String(body.action || 'update').toLowerCase();
+
+    if (action === 'update') {
+      return json_(updateCollection_(body));
+    }
+
+    throw new Error('Unsupported action: ' + action);
+  } catch (err) {
+    return json_({ success: false, error: String(err && err.message ? err.message : err) });
+  }
+}
+
+function listCollections_(opt) {
+  opt = opt || {};
+  const ss = SpreadsheetApp.openById(COLLECTION_CONFIG.SPREADSHEET_ID);
+  const sheet = resolveCollectionSheet_(ss, opt.sheet);
+  const lastRow = sheet.getLastRow();
+  const lastCol = Math.max(sheet.getLastColumn(), 19);
+
+  if (lastRow < 2) {
+    return {
+      success: true,
+      sheet: sheet.getName(),
+      total: 0,
+      statuses: COLLECTION_CONFIG.STATUS_OPTIONS.slice(),
+      rows: []
+    };
+  }
+
+  const values = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  const headers = values[0].map(v => String(v || '').trim());
+  const statusFilter = String(opt.status || '').trim().toLowerCase();
+  const search = String(opt.search || '').trim().toLowerCase();
+
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const r = values[i];
+    const account = clean_(r[0]);
+    if (!account) continue;
+
+    const item = {
+      row: i + 1,
+      account: account,
+      due_summary: clean_(r[1]),
+      tech_name: clean_(r[2]),
+      collection_status: clean_(r[3]),
+      note: clean_(r[4]),
+      date_update: clean_(r[5]),
+      client_name: clean_(r[6]),
+      phone: clean_(r[7]),
+      account_no: clean_(r[8]),
+      invoice_no: clean_(r[9]),
+      period: clean_(r[10]),
+      total: clean_(r[11]),
+      billing_status: clean_(r[12]),
+      due_date: clean_(r[13]),
+      isolir_date: clean_(r[14]),
+      date_payment: clean_(r[15]),
+      reference: clean_(r[16]),
+      address: clean_(r[17]),
+      action: clean_(r[18])
+    };
+
+    if (statusFilter && item.collection_status.toLowerCase() !== statusFilter) continue;
+
+    if (search) {
+      const haystack = [
+        item.account,
+        item.client_name,
+        item.phone,
+        item.account_no,
+        item.address,
+        item.tech_name,
+        item.collection_status,
+        item.note
+      ].join(' ').toLowerCase();
+      if (haystack.indexOf(search) === -1) continue;
+    }
+
+    rows.push(item);
+  }
+
+  return {
+    success: true,
+    sheet: sheet.getName(),
+    total: rows.length,
+    statuses: COLLECTION_CONFIG.STATUS_OPTIONS.slice(),
+    headers: headers,
+    rows: rows
+  };
+}
+
+function updateCollection_(body) {
+  const account = clean_(body.account || body.account_no);
+  const employeeName = clean_(body.employee_name || body.tech_name);
+  const newStatus = normalizeStatus_(body.status || body.collection_status);
+  const note = clean_(body.note);
+
+  if (!account) throw new Error('Account number is required.');
+  if (!employeeName) throw new Error('Employee name is required.');
+  if (!newStatus) throw new Error('Collection status is required.');
+
+  if (COLLECTION_CONFIG.NOTE_REQUIRED.indexOf(newStatus) !== -1 && !note) {
+    throw new Error('A comment/note is required for status: ' + newStatus);
+  }
+
+  const ss = SpreadsheetApp.openById(COLLECTION_CONFIG.SPREADSHEET_ID);
+  const sheet = resolveCollectionSheet_(ss, body.sheet || body.month || '');
+  const row = findAccountRow_(sheet, account);
+  if (!row) throw new Error('Account not found in ' + sheet.getName() + ': ' + account);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const oldStatus = clean_(sheet.getRange(row, 4).getDisplayValue());
+    const clientName = clean_(sheet.getRange(row, 7).getDisplayValue());
+
+    sheet.getRange(row, 3).setValue(employeeName); // Tech Name / employee
+    sheet.getRange(row, 4).setValue(newStatus);    // Collection Status
+    sheet.getRange(row, 5).setValue(note);         // Note
+    sheet.getRange(row, 6).setValue(new Date());   // Date Update
+    sheet.getRange(row, 6).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      sheet: sheet.getName(),
+      row: row,
+      account: account,
+      client_name: clientName,
+      employee_name: employeeName,
+      old_status: oldStatus,
+      new_status: newStatus,
+      note: note,
+      date_update: Utilities.formatDate(new Date(), COLLECTION_CONFIG.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX")
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function resolveCollectionSheet_(ss, requested) {
+  const req = clean_(requested);
+  if (req) {
+    const exact = ss.getSheetByName(req);
+    if (!exact) throw new Error('Collection sheet not found: ' + req);
+    return exact;
+  }
+
+  const currentMonth = Utilities.formatDate(new Date(), COLLECTION_CONFIG.TIMEZONE, 'MMMM');
+  const current = ss.getSheetByName(currentMonth);
+  if (current) return current;
+
+  const monthNames = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+  const available = ss.getSheets()
+    .filter(s => !s.isSheetHidden() || monthNames.indexOf(s.getName()) !== -1)
+    .map(s => ({ sheet: s, monthIndex: monthNames.indexOf(s.getName()) }))
+    .filter(x => x.monthIndex >= 0)
+    .sort((a, b) => b.monthIndex - a.monthIndex);
+
+  if (!available.length) throw new Error('No monthly collection sheet found.');
+  return available[0].sheet;
+}
+
+function findAccountRow_(sheet, account) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  const target = String(account).trim().toLowerCase();
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim().toLowerCase() === target) return i + 2;
+  }
+  return 0;
+}
+
+function normalizeStatus_(value) {
+  const raw = clean_(value);
+  if (!raw) return '';
+  const match = COLLECTION_CONFIG.STATUS_OPTIONS.find(s => s.toLowerCase() === raw.toLowerCase());
+  if (!match) throw new Error('Invalid collection status: ' + raw);
+  return match;
+}
+
+function getApiToken_() {
+  const token = PropertiesService.getScriptProperties().getProperty(COLLECTION_CONFIG.TOKEN_PROPERTY);
+  if (!token) throw new Error('Collection API is not configured yet. Run setupCollectionApi first.');
+  return token;
+}
+
+function validateToken_(token) {
+  const expected = getApiToken_();
+  if (!token || String(token) !== expected) throw new Error('Unauthorized collection API request.');
+}
+
+function parseJsonBody_(e) {
+  const raw = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
+  try {
+    return JSON.parse(raw || '{}');
+  } catch (_) {
+    throw new Error('Invalid JSON body.');
+  }
+}
+
+function clean_(value) {
+  return String(value == null ? '' : value).trim();
+}
+
+function json_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
