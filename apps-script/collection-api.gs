@@ -1,7 +1,8 @@
 const COLLECTION_CONFIG = Object.freeze({
   SPREADSHEET_ID: '1zSlXVTy9wKJE90lM8GZKpqZuuNqsT3Z3Dt0CD8nXzKs',
   TIMEZONE: 'Asia/Manila',
-  TOKEN_PROPERTY: 'COLLECTION_API_TOKEN',
+  SUPABASE_URL: 'https://tcexzfztdgximrzuosqs.supabase.co',
+  SUPABASE_KEY: 'sb_publishable_8H8_S7NTWvzPCLvYUe2C4g_k3Ltjfiz',
   STATUS_OPTIONS: [
     'Paid',
     'For Pullout',
@@ -24,7 +25,6 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Collection API')
     .addItem('Setup API', 'setupCollectionApi')
-    .addItem('Show API Token', 'showCollectionApiToken')
     .addItem('Test Collection List', 'testCollectionList')
     .addToUi();
 }
@@ -32,24 +32,14 @@ function onOpen() {
 function setupCollectionApi() {
   const ss = SpreadsheetApp.openById(COLLECTION_CONFIG.SPREADSHEET_ID);
   ss.setSpreadsheetTimeZone(COLLECTION_CONFIG.TIMEZONE);
-
-  const props = PropertiesService.getScriptProperties();
-  let token = props.getProperty(COLLECTION_CONFIG.TOKEN_PROPERTY);
-  if (!token) {
-    token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-    props.setProperty(COLLECTION_CONFIG.TOKEN_PROPERTY, token);
-  }
-
   console.log('Collection API setup complete.');
   console.log('Spreadsheet timezone: ' + ss.getSpreadsheetTimeZone());
-  console.log('COLLECTION_API_TOKEN=' + token);
-  return { success: true, timezone: ss.getSpreadsheetTimeZone(), token: token };
-}
-
-function showCollectionApiToken() {
-  const token = getApiToken_();
-  console.log('COLLECTION_API_TOKEN=' + token);
-  return token;
+  console.log('Authentication: Supabase employee session');
+  return {
+    success: true,
+    timezone: ss.getSpreadsheetTimeZone(),
+    auth: 'SUPABASE_EMPLOYEE_SESSION'
+  };
 }
 
 function testCollectionList() {
@@ -66,45 +56,47 @@ function testCollectionList() {
 function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
-    validateToken_(p.token);
-    const action = String(p.action || 'list').toLowerCase();
+    const action = String(p.action || 'health').toLowerCase();
 
     if (action === 'health') {
       return json_({
         success: true,
         service: 'TechGeekPH Collection API',
         timezone: COLLECTION_CONFIG.TIMEZONE,
-        spreadsheet_id: COLLECTION_CONFIG.SPREADSHEET_ID
+        auth: 'SUPABASE_EMPLOYEE_SESSION'
       });
     }
 
-    if (action === 'list') {
-      return json_(listCollections_({
-        sheet: p.sheet || p.month || '',
-        status: p.status || '',
-        search: p.search || ''
-      }));
-    }
-
-    throw new Error('Unsupported action: ' + action);
+    throw new Error('Use POST for authenticated collection requests.');
   } catch (err) {
-    return json_({ success: false, error: String(err && err.message ? err.message : err) });
+    return json_({ success: false, error: errorText_(err) });
   }
 }
 
 function doPost(e) {
   try {
     const body = parseJsonBody_(e);
-    validateToken_(body.token);
-    const action = String(body.action || 'update').toLowerCase();
+    const accessToken = clean_(body.access_token);
+    if (!accessToken) throw new Error('Employee session is required.');
+
+    const staff = getSupabaseStaff_(accessToken);
+    const action = String(body.action || '').toLowerCase();
+
+    if (action === 'list') {
+      return json_(listCollections_({
+        sheet: body.sheet || body.month || '',
+        status: body.status || '',
+        search: body.search || ''
+      }));
+    }
 
     if (action === 'update') {
-      return json_(updateCollection_(body));
+      return json_(updateCollection_(body, staff, accessToken));
     }
 
     throw new Error('Unsupported action: ' + action);
   } catch (err) {
-    return json_({ success: false, error: String(err && err.message ? err.message : err) });
+    return json_({ success: false, error: errorText_(err) });
   }
 }
 
@@ -129,8 +121,8 @@ function listCollections_(opt) {
   const headers = values[0].map(v => String(v || '').trim());
   const statusFilter = String(opt.status || '').trim().toLowerCase();
   const search = String(opt.search || '').trim().toLowerCase();
-
   const rows = [];
+
   for (let i = 1; i < values.length; i++) {
     const r = values[i];
     const account = clean_(r[0]);
@@ -152,7 +144,7 @@ function listCollections_(opt) {
       total: clean_(r[11]),
       billing_status: clean_(r[12]),
       due_date: clean_(r[13]),
-      isolir_date: clean_(r[14]),
+      isolation_date: clean_(r[14]),
       date_payment: clean_(r[15]),
       reference: clean_(r[16]),
       address: clean_(r[17]),
@@ -188,14 +180,14 @@ function listCollections_(opt) {
   };
 }
 
-function updateCollection_(body) {
+function updateCollection_(body, staff, accessToken) {
   const account = clean_(body.account || body.account_no);
-  const employeeName = clean_(body.employee_name || body.tech_name);
+  const employeeName = clean_(staff.employee_name);
   const newStatus = normalizeStatus_(body.status || body.collection_status);
   const note = clean_(body.note);
 
   if (!account) throw new Error('Account number is required.');
-  if (!employeeName) throw new Error('Employee name is required.');
+  if (!employeeName) throw new Error('Employee profile name is missing.');
   if (!newStatus) throw new Error('Collection status is required.');
 
   if (COLLECTION_CONFIG.NOTE_REQUIRED.indexOf(newStatus) !== -1 && !note) {
@@ -209,16 +201,39 @@ function updateCollection_(body) {
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
+
   try {
+    const oldTech = sheet.getRange(row, 3).getValue();
     const oldStatus = clean_(sheet.getRange(row, 4).getDisplayValue());
+    const oldNote = sheet.getRange(row, 5).getValue();
+    const oldDate = sheet.getRange(row, 6).getValue();
     const clientName = clean_(sheet.getRange(row, 7).getDisplayValue());
 
-    sheet.getRange(row, 3).setValue(employeeName); // Tech Name / employee
-    sheet.getRange(row, 4).setValue(newStatus);    // Collection Status
-    sheet.getRange(row, 5).setValue(note);         // Note
-    sheet.getRange(row, 6).setValue(new Date());   // Date Update
+    sheet.getRange(row, 3).setValue(employeeName);
+    sheet.getRange(row, 4).setValue(newStatus);
+    sheet.getRange(row, 5).setValue(note);
+    sheet.getRange(row, 6).setValue(new Date());
     sheet.getRange(row, 6).setNumberFormat('mmm d, yyyy h:mm AM/PM');
     SpreadsheetApp.flush();
+
+    try {
+      supabaseRpc_('app_log_collection_update', accessToken, {
+        p_account_no: account,
+        p_client_name: clientName,
+        p_old_status: oldStatus,
+        p_new_status: newStatus,
+        p_note: note,
+        p_sheet_name: sheet.getName(),
+        p_sheet_row: row
+      });
+    } catch (logErr) {
+      sheet.getRange(row, 3).setValue(oldTech);
+      sheet.getRange(row, 4).setValue(oldStatus);
+      sheet.getRange(row, 5).setValue(oldNote);
+      sheet.getRange(row, 6).setValue(oldDate);
+      SpreadsheetApp.flush();
+      throw new Error('Monitoring log failed, so the Sheet update was rolled back. ' + errorText_(logErr));
+    }
 
     return {
       success: true,
@@ -226,15 +241,57 @@ function updateCollection_(body) {
       row: row,
       account: account,
       client_name: clientName,
+      employee_id: clean_(staff.employee_id),
       employee_name: employeeName,
       old_status: oldStatus,
       new_status: newStatus,
       note: note,
+      monitoring_logged: true,
       date_update: Utilities.formatDate(new Date(), COLLECTION_CONFIG.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX")
     };
   } finally {
     lock.releaseLock();
   }
+}
+
+function getSupabaseStaff_(accessToken) {
+  const staff = supabaseRpc_('app_current_staff_context', accessToken, {});
+  if (!staff || !staff.employee_id || !staff.employee_name) {
+    throw new Error('Active employee account is required.');
+  }
+  return staff;
+}
+
+function supabaseRpc_(rpcName, accessToken, payload) {
+  const response = UrlFetchApp.fetch(
+    COLLECTION_CONFIG.SUPABASE_URL + '/rest/v1/rpc/' + encodeURIComponent(rpcName),
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        apikey: COLLECTION_CONFIG.SUPABASE_KEY,
+        Authorization: 'Bearer ' + accessToken
+      },
+      payload: JSON.stringify(payload || {}),
+      muteHttpExceptions: true
+    }
+  );
+
+  const code = response.getResponseCode();
+  const text = response.getContentText();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    data = text;
+  }
+
+  if (code < 200 || code >= 300) {
+    const msg = data && data.message ? data.message : text || ('HTTP ' + code);
+    throw new Error('Supabase RPC ' + rpcName + ' failed: ' + msg);
+  }
+
+  return data;
 }
 
 function resolveCollectionSheet_(ss, requested) {
@@ -253,8 +310,8 @@ function resolveCollectionSheet_(ss, requested) {
     'January','February','March','April','May','June',
     'July','August','September','October','November','December'
   ];
+
   const available = ss.getSheets()
-    .filter(s => !s.isSheetHidden() || monthNames.indexOf(s.getName()) !== -1)
     .map(s => ({ sheet: s, monthIndex: monthNames.indexOf(s.getName()) }))
     .filter(x => x.monthIndex >= 0)
     .sort((a, b) => b.monthIndex - a.monthIndex);
@@ -266,8 +323,10 @@ function resolveCollectionSheet_(ss, requested) {
 function findAccountRow_(sheet, account) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 0;
+
   const values = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
   const target = String(account).trim().toLowerCase();
+
   for (let i = 0; i < values.length; i++) {
     if (String(values[i][0] || '').trim().toLowerCase() === target) return i + 2;
   }
@@ -282,17 +341,6 @@ function normalizeStatus_(value) {
   return match;
 }
 
-function getApiToken_() {
-  const token = PropertiesService.getScriptProperties().getProperty(COLLECTION_CONFIG.TOKEN_PROPERTY);
-  if (!token) throw new Error('Collection API is not configured yet. Run setupCollectionApi first.');
-  return token;
-}
-
-function validateToken_(token) {
-  const expected = getApiToken_();
-  if (!token || String(token) !== expected) throw new Error('Unauthorized collection API request.');
-}
-
 function parseJsonBody_(e) {
   const raw = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
   try {
@@ -304,6 +352,10 @@ function parseJsonBody_(e) {
 
 function clean_(value) {
   return String(value == null ? '' : value).trim();
+}
+
+function errorText_(err) {
+  return String(err && err.message ? err.message : err);
 }
 
 function json_(obj) {
