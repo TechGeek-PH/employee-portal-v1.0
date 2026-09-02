@@ -83,4 +83,12 @@
       }
     }
   });
+
+  if (page === 'tickets.html' && !document.querySelector('script[data-ticket-aging-priority]')) {
+    const aging = document.createElement('script');
+    aging.src = 'https://techgeek-ph.github.io/admin-portal/assets/ticket-aging-priority.js?v=20260902-aging1';
+    aging.async = false;
+    aging.dataset.ticketAgingPriority = '1';
+    document.head.appendChild(aging);
+  }
 })();
